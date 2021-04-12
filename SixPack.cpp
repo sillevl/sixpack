@@ -1,0 +1,123 @@
+#include "SixPack.h"
+#include "mbedtls/sha256.h" /* SHA-256 only */
+#include "Blik.h"
+#include "logger.h"
+#include <chrono>
+#include "Messages/Alive.h"
+#include "Messages/Events.h"
+
+#define LOGGER_MODULE_NAME "SIXPACK"
+
+// unsigned loggerLevel = LOGGER_LEVEL_DEBUG;
+
+using namespace SixPackLib;
+
+SixPack::SixPack(CAN* can) : blik(can), queue(32 * EVENTS_EVENT_SIZE), eventThread(osPriorityHigh) {
+    NOTICE("*** Start SixPack ***");
+    setDeviceId();
+    eventThread.start(callback(&queue, &EventQueue::dispatch_forever));
+    blik.onMessage([this](BlikMessage message) {
+        this->blinkStatusLed();
+        parseMessage(message);
+    });
+
+    // TODO: random startup delay (use unique_id for seed)
+    queue.call_every(AliveInterval, this, &SixPack::sendAliveMessage);
+    sendAliveMessage();  
+}
+
+void SixPack::send(SixPackMessage message){
+    uint32_t canId = message.type << 16 | deviceId;
+    blik.send(canId, message.data, message.size);
+    blinkStatusLed();
+}
+
+void SixPack::setDeviceId(){
+    // get STM32 Unique ID
+    uint8_t uid[12] = { 0 };
+    uint8_t* uid_reg = Stm32UniqueId::getId();
+    std::copy(uid_reg, uid_reg + 12, uid);
+
+    // Use SMT32 Unique ID to generate a hash
+    unsigned char hash[32]; /* SHA-256 outputs 32 bytes */
+    mbedtls_sha256( (const unsigned char*) uid, 12, hash, 0);
+
+    std::memcpy( &deviceId, hash, 2);
+
+    printf("Device id: %04X\r\n", deviceId);
+}
+
+void SixPack::setDeviceType(uint16_t deviceType) {
+    this->deviceType = deviceType;
+}
+
+void SixPack::setFirmwareVersion(uint16_t firmwareVersion) {
+    this->firmwareVersion = firmwareVersion;
+}
+
+void SixPack::setStatusLed(PinName pin) {
+    statusLed = new DigitalOut(pin);
+}
+
+void SixPack::blinkStatusLed() {
+    if(!statusLed->is_connected()) { return; }
+    if(statusLed->read() == 1) { return; }
+    statusLed->write(1);
+    queue.call_in(50ms, [this]() {
+        statusLed->write(0);
+    });
+}
+
+void SixPack::sendAliveMessage() {
+    // TODO: implement bootcounter
+    auto now_ms = std::chrono::time_point_cast<std::chrono::seconds>(Kernel::Clock::now());
+    long uptime = now_ms.time_since_epoch().count();
+    send( Alive::DeviceInfo(deviceType, firmwareVersion, uptime, 0) );
+}
+
+void SixPack::setTPHCallback(mbed::Callback<TPH()> callback) {
+    tphCallback = callback;
+    queue.call_every(TPHInterval, this, &SixPack::sendTPHMessage);
+}
+
+void SixPack::sendTPHMessage() {
+    TPH tph = tphCallback();
+    send( Events::TPH( tph.temperature, tph.humidity, tph.pressure ) );
+}
+
+void SixPack::setBusVoltageCallback(mbed::Callback<float()> callback) {
+    busVoltageCallback = callback;
+    queue.call_every(TPHInterval, this, &SixPack::sendBusVoltageMessage);
+}
+
+void SixPack::sendBusVoltageMessage() {
+    float voltage = busVoltageCallback();
+    // TODO: do something with the busvoltage
+}
+
+void SixPack::buttonUpdate(ButtonEvent event) {
+    send( Events::Button(event.index, event.state, event.time) );
+}
+
+void SixPack::feedbackLedsEvent(mbed::Callback<void(FeedbackLedStatus)> callback) {
+    updateFeedbackLedsCallback = callback;
+}
+
+void SixPack::parseMessage(BlikMessage message) {
+    uint16_t id = message.type & 0xFFFF;
+    uint16_t type = message.type >> 16;
+
+    // printf("----- message ---------\r\n");
+    // printf("  type: %X\r\n", int(message.type));
+    // for(int i = 0; i < message.size; i++) {
+    //     printf("%X ", message.data[i]);
+    // }
+    // printf("\r\n");
+
+    if(id == deviceId) {
+        if(type == 0x0200) { // Set status leds 
+            FeedbackLedStatus status = { message.data[0], message.data[1] };
+            updateFeedbackLedsCallback(status);
+        }
+    }
+}
