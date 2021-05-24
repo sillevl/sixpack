@@ -55,16 +55,20 @@ void SixPack::setFirmwareVersion(uint16_t firmwareVersion) {
     this->firmwareVersion = firmwareVersion;
 }
 
-void SixPack::setStatusLed(PinName pin) {
+void SixPack::setStatusLed(PinName pin, bool negativeLogic) {
     statusLed = new DigitalOut(pin);
+    statusLed->write(negativeLogic ? 0 : 1);
+    this->statusLedNegativeLogic = negativeLogic;
 }
 
 void SixPack::blinkStatusLed() {
-    if(!statusLed->is_connected()) { return; }
-    if(statusLed->read() == 1) { return; }
-    statusLed->write(1);
+    if(!statusLed || !statusLed->is_connected()) { return; }
+    int on = statusLedNegativeLogic ? 1 : 0;
+    if( statusLed->read() == on) { return; }
+    statusLed->write(on);
     queue.call_in(50ms, [this]() {
-        statusLed->write(0);
+        int off = this->statusLedNegativeLogic ? 0 : 1;
+        statusLed->write(off);
     });
 }
 

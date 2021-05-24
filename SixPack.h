@@ -32,7 +32,7 @@ class SixPack {
         SixPack(CAN* can);
         void send(SixPackLib::SixPackMessage);
         void onActivity(mbed::Callback<void()> cb);
-        void setStatusLed(PinName pin);
+        void setStatusLed(PinName pin, bool negativeLogic = false);
         void setDeviceType(uint16_t deviceType);
         void setFirmwareVersion(uint16_t firmwareVersion);
         void setTPHCallback(mbed::Callback<TPH()> callback);
@@ -49,6 +49,7 @@ class SixPack {
         uint16_t deviceId = 0;
         uint16_t deviceType = 0;
         uint16_t firmwareVersion = 0;
+        bool statusLedNegativeLogic = false;
 
         void parseMessage(BlikMessage message);
         void setDeviceId();
