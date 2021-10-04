@@ -111,6 +111,8 @@ void SixPack::parseMessage(BlikMessage message) {
     uint16_t id = message.type & 0xFFFF;
     uint16_t type = message.type >> 16;
 
+    // TODO: add filters dynamically with callbacks defined in lib/ files
+
     // printf("----- message ---------\r\n");
     // printf("  type: %X\r\n", int(message.type));
     // for(int i = 0; i < message.size; i++) {
