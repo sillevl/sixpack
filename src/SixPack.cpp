@@ -1,29 +1,47 @@
 #include "SixPack.h"
 #include "mbedtls/sha256.h" /* SHA-256 only */
 #include "Blik.h"
-#include "logger.h"
 #include <chrono>
 #include "Messages/Alive.h"
 #include "Messages/Events.h"
+#include "mbed_trace.h"
 
-#define LOGGER_MODULE_NAME "SIXPACK"
-
-// unsigned loggerLevel = LOGGER_LEVEL_DEBUG;
+#define TRACE_GROUP "SIXPACK"
 
 using namespace SixPackLib;
 
-SixPack::SixPack(CAN* can) : blik(can), queue(32 * EVENTS_EVENT_SIZE), eventThread(osPriorityHigh) {
-    NOTICE("*** Start SixPack ***");
+SixPack::SixPack(CAN* can, events::EventQueue* ev_queue) : blik(can), queue(32 * EVENTS_EVENT_SIZE), eventThread(osPriorityHigh) {
+    queue.chain(ev_queue);
+    tr_info("*** Start SixPack ***");
     setDeviceId();
     eventThread.start(callback(&queue, &EventQueue::dispatch_forever));
     blik.onMessage([this](BlikMessage message) {
         this->blinkStatusLed();
         parseMessage(message);
+        std::list<IComponent *>::iterator iterator = components.begin();
+        while (iterator != components.end()) {
+            (*iterator)->onMessage(message);
+            ++iterator;
+        }
+
+        // std::for_each(std::begin(components), std::end(components), [message](IComponent* component) {
+        //     // std::cout << value << "\n";
+        //     (*component)->onMessage(message);
+        // });
     });
 
     // TODO: random startup delay (use unique_id for seed)
     queue.call_every(AliveInterval, this, &SixPack::sendAliveMessage);
     sendAliveMessage();  
+}
+
+void SixPack::registerComponent(IComponent* component) {
+    components.push_back(component);
+}
+
+void SixPack::unregisterComponent(IComponent* component) {
+    components.remove(component);
+    // TODO
 }
 
 void SixPack::send(SixPackMessage message){
@@ -44,7 +62,7 @@ void SixPack::setDeviceId(){
 
     std::memcpy( &deviceId, hash, 2);
 
-    printf("Device id: %04X\r\n", deviceId);
+    tr_info("Device id: %04X\r\n", deviceId);
 }
 
 void SixPack::setDeviceType(uint16_t deviceType) {
@@ -79,32 +97,35 @@ void SixPack::sendAliveMessage() {
     send( Alive::DeviceInfo(deviceType, firmwareVersion, uptime, 0) );
 }
 
-void SixPack::setTPHCallback(mbed::Callback<TPH()> callback) {
-    tphCallback = callback;
-    queue.call_every(TPHInterval, this, &SixPack::sendTPHMessage);
-}
+// void SixPack::setTPHCallback(mbed::Callback<TPH()> callback) {
+//     tphCallback = callback;
+//     queue.call_every(TPHInterval, this, &SixPack::sendTPHMessage);
+// }
 
-void SixPack::sendTPHMessage() {
-    TPH tph = tphCallback();
-    send( Events::TPH( tph.temperature, tph.humidity, tph.pressure ) );
-}
+// void SixPack::sendTPHMessage() {
+//     TPH tph = tphCallback();
+//     send( Events::TPH( tph.temperature, tph.humidity, tph.pressure ) );
+// }
 
-void SixPack::setBusVoltageCallback(mbed::Callback<float()> callback) {
-    busVoltageCallback = callback;
-    queue.call_every(TPHInterval, this, &SixPack::sendBusVoltageMessage);
-}
+// void SixPack::setBusVoltageCallback(mbed::Callback<float()> callback) {
+//     busVoltageCallback = callback;
+//     queue.call_every(TPHInterval, this, &SixPack::sendBusVoltageMessage);
+// }
 
-void SixPack::sendBusVoltageMessage() {
-    float voltage = busVoltageCallback();
-    // TODO: do something with the busvoltage
-}
+// void SixPack::sendBusVoltageMessage() {
+//     float voltage = busVoltageCallback();
+//     // TODO: do something with the busvoltage
+// }
 
-void SixPack::buttonUpdate(ButtonEvent event) {
-    send( Events::Button(event.index, event.state, event.time) );
-}
+// void SixPack::buttonUpdate(ButtonEvent event) {
+//     send( Events::Button(event.index, event.state, event.time) );
+// }
 
-void SixPack::feedbackLedsEvent(mbed::Callback<void(FeedbackLedStatus)> callback) {
-    updateFeedbackLedsCallback = callback;
+// void SixPack::feedbackLedsEvent(mbed::Callback<void(FeedbackLedStatus)> callback) {
+//     updateFeedbackLedsCallback = callback;
+// }
+void SixPack::relayUpdateEvent(mbed::Callback<void(RelayUpdateStatus)> callback) {
+    updateRelayCallback = callback;
 }
 
 void SixPack::parseMessage(BlikMessage message) {
@@ -121,9 +142,13 @@ void SixPack::parseMessage(BlikMessage message) {
     // printf("\r\n");
 
     if(id == deviceId) {
-        if(type == 0x0200) { // Set status leds 
-            FeedbackLedStatus status = { message.data[0], message.data[1] };
-            updateFeedbackLedsCallback(status);
+        if(type == 0x0110) { // Set relay
+            RelayUpdateStatus status { message.data[0], message.data[1] };
+            updateRelayCallback(status);
         }
+    //     if(type == 0x0200) { // Set status leds 
+    //         FeedbackLedStatus status = { message.data[0], message.data[1] };
+    //         updateFeedbackLedsCallback(status);
+    //     }
     }
 }

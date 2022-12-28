@@ -25,3 +25,13 @@ SixPackMessage Events::Button(uint8_t index, uint8_t state, uint32_t timeDelta) 
 
     return Message::Event( (uint16_t) Events::SubType::BUTTON, message, SIZE);
 }
+
+SixPackMessage Events::RelayUpdate(uint8_t index, uint8_t state) {
+    const uint8_t SIZE = 2;
+    uint8_t message[SIZE] = { 0 };
+
+    message[0] = index;
+    message[1] = state;
+
+    return Message::Event( (uint16_t) Events::SubType::RELAY_UPDATE, message, SIZE);
+}
