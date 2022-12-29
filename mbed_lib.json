@@ -1,4 +1,13 @@
 {
     "name": "SixPack",
-    "requires": ["mbed-trace"]
+    "requires": [
+        "mbed-trace",
+        "blik",
+        "mbedtls"
+    ],
+    "config": {
+        "can-txd-pin": "PA_11",
+        "can-rxd-pin": "PA_12",
+        "can-bitrate": 500000
+    }
 }

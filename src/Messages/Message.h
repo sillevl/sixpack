@@ -26,7 +26,7 @@ namespace SixPackLib
     };
 
     enum ActionType {
-
+        FEEDBACKLED = MessageType::ACTION | 0x0200,
     };
 
     enum EventType {
@@ -50,6 +50,6 @@ namespace SixPackLib
 
             
     };
-} // namespace Blik::Message
+} // namespace SixPackLib::Message
 
 

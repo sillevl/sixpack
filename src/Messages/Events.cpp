@@ -1,5 +1,7 @@
 #include "Events.h"
 
+using namespace SixPackLib;
+
 SixPackMessage Events::TPH(float temperature,  float humidity, float pressure) {
     const uint8_t SIZE = 6;
     uint8_t message[SIZE] = { 0 };
@@ -35,3 +37,14 @@ SixPackMessage Events::RelayUpdate(uint8_t index, uint8_t state) {
 
     return Message::Event( (uint16_t) Events::SubType::RELAY_UPDATE, message, SIZE);
 }
+
+SixPackMessage Events::BusVoltage(float voltage) {
+    const uint8_t SIZE = 4;
+    uint8_t message[SIZE] = { 0 };
+
+    uint32_t millivolts = voltage * 1000.0f;
+    memcpy(&message, &millivolts, sizeof(millivolts));
+
+    return Message::Event( (uint16_t) Events::SubType::BUSVOLTAGE, message, SIZE);
+}
+
