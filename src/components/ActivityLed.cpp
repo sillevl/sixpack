@@ -8,10 +8,12 @@ StatusLed(status_led_pin, negative_logic)
 
 void ActivityLed::blink() {
     on();
-    sixPack->queue.call_in(50ms, mbed::callback(this, &ActivityLed::off));
+    sixPack->queue.call_in(50ms, mbed::Callback<void()>(this, &ActivityLed::off));
 }
 
 void ActivityLed::onRegister() {
+    on();
+    sixPack->queue.call_in(200ms, mbed::Callback<void()>(this, &ActivityLed::off));
     sixPack->onActivity( [this] () {
         blink();
     });

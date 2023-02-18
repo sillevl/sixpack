@@ -1,12 +1,15 @@
 #pragma once
 
 #include "Component.h"
-#include "BME280.h"
 
+struct TPHData {
+    float temperature;
+    float humidity;
+    float pressure;
+};
 class TPH: public Component {
     public:
-        TPH(BME280* tph);
-        void onRegister() override;
+        void setTPHHandler( Callback<TPHData()> handler);
     private:
-        BME280* tph;
+        Callback<TPHData()> onTPHHandler;
 };

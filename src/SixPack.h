@@ -1,12 +1,14 @@
 #pragma once
 
 #include "mbed.h"
+#include "./version.h"
 #include "Stm32UniqueId.h"
 #include "Messages/Message.h"
 #include "Blik.h"
 #include "./components/Component.h"
 #include <list>
 #include <map>
+#include "spha.h"
 
 class Component;
 
@@ -14,7 +16,7 @@ static const auto AliveInterval = 10s;
 
 class SixPack {
     public:
-        SixPack(CAN* can, events::EventQueue* ev_queue);
+        SixPack(events::EventQueue* ev_queue, uint32_t firmwareVersion);
         void registerComponent(Component* component);
         void unregisterComponent(Component* component);
 
@@ -29,6 +31,7 @@ class SixPack {
         EventQueue queue;
 
     private:
+        CAN can;
         Blik blik;
         std::list<Component*> components;
         uint16_t deviceId = 0;

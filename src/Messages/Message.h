@@ -26,7 +26,10 @@ namespace SixPackLib
     };
 
     enum ActionType {
-        FEEDBACKLED = MessageType::ACTION | 0x0200,
+        FEEDBACKLED                 = MessageType::ACTION | 0x0200,
+        FEEDBACKLED_BRIGHTNESS      = MessageType::ACTION | 0x0201,
+        FEEDBACKLED_EFFECT          = MessageType::ACTION | 0x0202,
+        FEEDBACKLED_GLOBAL_EFFECT   = MessageType::ACTION | 0x0203,
     };
 
     enum EventType {

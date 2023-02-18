@@ -8,6 +8,9 @@
     "config": {
         "can-txd-pin": "PA_11",
         "can-rxd-pin": "PA_12",
-        "can-bitrate": 500000
+        "can-bitrate": 500000,
+        "device-type": {
+            "required": true
+        }
     }
 }

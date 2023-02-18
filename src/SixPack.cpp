@@ -10,9 +10,15 @@
 
 using namespace SixPackLib;
 
-SixPack::SixPack(CAN* can, events::EventQueue* ev_queue) : queue(32 * EVENTS_EVENT_SIZE), blik(can, ev_queue) {
+SixPack::SixPack(events::EventQueue* ev_queue, uint32_t firmwareVersion):
+    queue(32 * EVENTS_EVENT_SIZE),
+    can(MBED_CONF_SIXPACK_CAN_TXD_PIN, MBED_CONF_SIXPACK_CAN_RXD_PIN, MBED_CONF_SIXPACK_CAN_BITRATE),
+    blik(&can, ev_queue)
+{
     queue.chain(ev_queue);
     tr_info("*** Start SixPack ***");
+    setDeviceType(spha::MBED_CONF_SIXPACK_DEVICE_TYPE);
+    setFirmwareVersion(firmwareVersion);
     setDeviceId();
     blik.onMessage([this](BlikMessage message) {
         // this->blinkStatusLed();

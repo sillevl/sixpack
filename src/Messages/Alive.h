@@ -12,5 +12,5 @@ class Alive {
     };
 
     public:
-        static SixPackMessage DeviceInfo(uint16_t deviceType, uint16_t firmwareVersion, uint32_t uptime, uint16_t bootCount);
+        static SixPackMessage DeviceInfo(uint16_t deviceType, uint32_t firmwareVersion, uint32_t uptime, uint16_t bootCount);
 };
